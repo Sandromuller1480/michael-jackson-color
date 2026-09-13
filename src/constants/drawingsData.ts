@@ -19,11 +19,6 @@ export interface Drawing {
   floodFillAvailable: boolean;
 }
 
-export interface Palette {
-  name: string;
-  colors: string[];
-}
-
 export interface Achievement {
   id: string;
   name: string;
@@ -134,111 +129,6 @@ drawingsData.unshift({
   freePlayAvailable: true,
   floodFillAvailable: true,
 });
-
-const baseColorPalettes: Palette[] = [
-  {
-    name: "Cores Vibrantes",
-    colors: ["#FF3B30", "#FF9500", "#FFCC00", "#4CD964", "#5AC8FA", "#007AFF", "#5856D6", "#FF2D55"],
-  },
-  {
-    name: "Tons Pastéis",
-    colors: ["#FFB3BA", "#FFDFBA", "#FFFFBA", "#BFFCC6", "#A7DBD8", "#C7CEEA", "#E8D7F1", "#F4C2D7"],
-  },
-  {
-    name: "Tons de Palco",
-    colors: ["#0B0D14", "#151B2C", "#2A1B4E", "#4B154A", "#721035", "#D2AD55", "#FFD84D", "#7557FF"],
-  },
-  {
-    name: "Dourado e Preto",
-    colors: ["#000000", "#1A1A1A", "#333333", "#666666", "#999999", "#D2AD55", "#F2D07B", "#FFFFFF"],
-  },
-  {
-    name: "Azul e Roxo",
-    colors: ["#0D0B1C", "#1D1936", "#322E5C", "#4C4687", "#6D64C5", "#8E85E3", "#B1A7F8", "#DCD6FF"],
-  },
-  {
-    name: "Arco-Íris",
-    colors: ["#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#9400D3", "#FFFFFF"],
-  },
-  {
-    name: "Tons de Pele",
-    colors: ["#FFDFC4", "#F0C7A1", "#E0A890", "#C68642", "#8D5524", "#613D1A", "#3B220B", "#F6D0B1"],
-  },
-  {
-    name: "Cores Especiais",
-    colors: ["#FFD700", "#C0C0C0", "#E5E4E2", "#A3C1AD", "#6E260E", "#0047AB", "#A45A52", "#131313"],
-  },
-];
-
-const extraPaletteNames = [
-  "Rosas e Vermelhos",
-  "Laranjas Quentes",
-  "Amarelos Luminosos",
-  "Verdes Claros",
-  "Verdes Profundos",
-  "Azuis de Ceu",
-  "Azuis Intensos",
-  "Roxos Vivos",
-  "Violetas Suaves",
-  "Magenta e Pink",
-  "Neons",
-  "Terrosos",
-  "Madeira e Couro",
-  "Cinzas Coloridos",
-  "Noite e Sombra",
-  "Doces",
-  "Pastel Extra",
-] as const;
-
-const hslToHex = (h: number, s: number, l: number) => {
-  const saturation = s / 100;
-  const lightness = l / 100;
-  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
-  const x = chroma * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = lightness - chroma / 2;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-
-  if (h < 60) {
-    r = chroma;
-    g = x;
-  } else if (h < 120) {
-    r = x;
-    g = chroma;
-  } else if (h < 180) {
-    g = chroma;
-    b = x;
-  } else if (h < 240) {
-    g = x;
-    b = chroma;
-  } else if (h < 300) {
-    r = x;
-    b = chroma;
-  } else {
-    r = chroma;
-    b = x;
-  }
-
-  return [r, g, b]
-    .map((value) => Math.round((value + m) * 255).toString(16).padStart(2, "0"))
-    .join("")
-    .toUpperCase()
-    .padStart(6, "0")
-    .replace(/^/, "#");
-};
-
-const generatedColorPalettes: Palette[] = extraPaletteNames.map((name, paletteIndex) => ({
-  name,
-  colors: Array.from({ length: 8 }, (_, colorIndex) => {
-    const hue = (paletteIndex * 21 + colorIndex * 7) % 360;
-    const saturation = 62 + ((paletteIndex + colorIndex) % 4) * 8;
-    const lightness = 34 + ((paletteIndex * 3 + colorIndex * 5) % 9) * 5;
-    return hslToHex(hue, Math.min(saturation, 92), Math.min(lightness, 82));
-  }),
-}));
-
-export const colorPalettes: Palette[] = [...baseColorPalettes, ...generatedColorPalettes];
 
 export const achievementsData: Achievement[] = [
   {
