@@ -14,6 +14,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 type Tool = "brush" | "pencil" | "marker" | "airbrush" | "bucket" | "eraser" | "picker";
 type PaperOrientation = "portrait" | "landscape";
 
+const MAX_ZOOM = 20.0;
+
 const getBlankPaperSize = (orientation: PaperOrientation) => (
   orientation === "landscape" ? { width: 1300, height: 1000 } : { width: 1000, height: 1300 }
 );
@@ -809,7 +811,7 @@ export default function EditorPage() {
 
   // 8. GERENCIAR ZOOM E PAN (MOUSE & MULTI-TOUCH)
   const adjustZoom = (amount: number) => {
-    setZoom((prev) => Math.max(0.5, Math.min(5.0, prev + amount)));
+    setZoom((prev) => Math.max(0.5, Math.min(MAX_ZOOM, prev + amount)));
   };
 
   const handleZoomReset = () => {
@@ -988,7 +990,7 @@ export default function EditorPage() {
       if (pinchStartDist !== null) {
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         const factor = dist / pinchStartDist;
-        setZoom((prev) => Math.max(0.5, Math.min(5.0, prev * factor)));
+        setZoom((prev) => Math.max(0.5, Math.min(MAX_ZOOM, prev * factor)));
         setPinchStartDist(dist);
       }
 
@@ -1057,7 +1059,7 @@ export default function EditorPage() {
       if (pinchStartDist !== null) {
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         const factor = dist / pinchStartDist;
-        setZoom((prev) => Math.max(0.5, Math.min(5.0, prev * factor)));
+        setZoom((prev) => Math.max(0.5, Math.min(MAX_ZOOM, prev * factor)));
         setPinchStartDist(dist);
       }
 
