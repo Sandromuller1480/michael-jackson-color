@@ -1698,7 +1698,7 @@ export default function EditorPage() {
           {recentColors.length > 0 && (
             <div className="space-y-2">
               <span className="text-[10px] font-fredoka font-semibold text-gray-400">Cores recentes</span>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
                 {recentColors.map((color) => renderSavedColorButton(color, "w-10 h-10"))}
               </div>
             </div>
@@ -1708,7 +1708,7 @@ export default function EditorPage() {
             {professionalColorFamilies.map((palette) => (
               <div key={palette.family} className="space-y-1.5">
                 <span className="text-[10px] font-fredoka font-semibold text-gray-400">{palette.family}</span>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
                   {palette.colors.map((color) => renderPaletteColorButton(color, "w-11 h-11"))}
                 </div>
               </div>
