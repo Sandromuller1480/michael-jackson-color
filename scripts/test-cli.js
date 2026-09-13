@@ -44,7 +44,7 @@ while ((match = drawingIdRegex.exec(content)) !== null) {
   }
 }
 console.log(`   - Encontrados ${drawingIds.length} desenhos únicos cadastrados.`);
-if (drawingIds.length !== 19) {
+if (drawingIds.length !== 30) {
   console.error("❌ ERRO: O aplicativo precisa ter exatamente 19 desenhos mapeados.");
   process.exit(1);
 }
@@ -59,9 +59,9 @@ if (!fs.existsSync(folderPath)) {
   process.exit(1);
 }
 
-const files = fs.readdirSync(folderPath).filter((f) => f.endsWith(".jpg"));
-console.log(`   - Pasta michael-atual: ${files.length} arquivos JPG encontrados.`);
-if (files.length !== 19) {
+const files = fs.readdirSync(folderPath).filter((f) => f.endsWith(".jpg") || f.endsWith(".png"));
+console.log(`   - Pasta michael-atual: ${files.length} arquivos de desenho encontrados.`);
+if (files.length !== 30) {
   console.error("❌ ERRO: A pasta public/drawings/michael-atual precisa ter exatamente 19 JPGs.");
   process.exit(1);
 }

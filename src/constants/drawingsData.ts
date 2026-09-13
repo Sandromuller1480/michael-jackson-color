@@ -92,6 +92,17 @@ const newDrawingFiles = [
   { id: "patterns_1", file: "desenho-16.jpg", collectionId: "patterns" },
   { id: "patterns_2", file: "desenho-17.jpg", collectionId: "patterns" },
   { id: "patterns_3", file: "desenho-18.jpg", collectionId: "patterns" },
+  { id: "silhouette_5", file: "desenho-20.png", collectionId: "silhouettes" },
+  { id: "silhouette_6", file: "desenho-21.png", collectionId: "silhouettes" },
+  { id: "stage_5", file: "desenho-22.png", collectionId: "stage" },
+  { id: "stage_6", file: "desenho-23.png", collectionId: "stage" },
+  { id: "dance_5", file: "desenho-24.png", collectionId: "dance" },
+  { id: "dance_6", file: "desenho-25.png", collectionId: "dance" },
+  { id: "dance_7", file: "desenho-26.png", collectionId: "dance" },
+  { id: "fashion_5", file: "desenho-27.png", collectionId: "fashion" },
+  { id: "fashion_6", file: "desenho-28.png", collectionId: "fashion" },
+  { id: "patterns_4", file: "desenho-29.png", collectionId: "patterns" },
+  { id: "patterns_5", file: "desenho-30.png", collectionId: "patterns" },
 ] as const;
 
 const difficultyByOrder: Drawing["difficulty"][] = ["Fácil", "Médio", "Fácil", "Difícil"];
