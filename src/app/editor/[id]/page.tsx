@@ -70,6 +70,7 @@ export default function EditorPage() {
   const isDrawingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
   const autoSaveSequenceRef = useRef(0);
+  const initializedCanvasKeyRef = useRef<string | null>(null);
   const activePenPointerIdRef = useRef<number | null>(null);
   const ignoreMouseUntilRef = useRef(0);
   const multiTouchActiveRef = useRef(false);
@@ -195,6 +196,10 @@ export default function EditorPage() {
     const paintCanvas = paintCanvasRef.current;
     const hiddenOutline = hiddenOutlineCanvasRef.current;
     if (!paintCanvas || !hiddenOutline) return;
+
+    const canvasKey = `${painting.id}:${drawing.id}:${drawing.path ?? "blank"}`;
+    if (initializedCanvasKeyRef.current === canvasKey) return;
+    initializedCanvasKeyRef.current = canvasKey;
 
     const ctx = paintCanvas.getContext("2d");
     const outlineCtx = hiddenOutline.getContext("2d");
@@ -1329,9 +1334,11 @@ export default function EditorPage() {
 
           {/* Undo */}
           <button
+            type="button"
             onClick={handleUndo}
             disabled={undoStack.length <= 1}
             title="Desfazer (Ctrl + Z)"
+            aria-label="Desfazer última ação"
             className="w-10 h-10 rounded-xl bg-bg-dark hover:bg-gray-800 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-gray-300 hover:text-white transition-all cursor-pointer"
             style={{ minWidth: isLargeButtons ? "48px" : "40px", minHeight: isLargeButtons ? "48px" : "40px" }}
           >
@@ -1340,9 +1347,11 @@ export default function EditorPage() {
 
           {/* Redo */}
           <button
+            type="button"
             onClick={handleRedo}
             disabled={redoStack.length === 0}
             title="Refazer (Ctrl + Shift + Z)"
+            aria-label="Refazer última ação desfeita"
             className="w-10 h-10 rounded-xl bg-bg-dark hover:bg-gray-800 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-gray-300 hover:text-white transition-all cursor-pointer"
             style={{ minWidth: isLargeButtons ? "48px" : "40px", minHeight: isLargeButtons ? "48px" : "40px" }}
           >
