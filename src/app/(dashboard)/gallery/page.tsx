@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Play, Trash2, Edit2, Copy, Download, Heart, Eye, Sparkles, AlertTriangle, X, Palette } from "lucide-react";
+import { Play, Trash2, Edit2, Copy, Download, Heart, Eye, Sparkles, AlertTriangle, X, Palette, FilePlus } from "lucide-react";
 import { db, Painting } from "@/lib/db";
 import { drawingsData } from "@/constants/drawingsData";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -86,6 +86,16 @@ export default function GalleryPage() {
 
     const drawing = drawingsData.find(d => d.id === painting.drawingId);
     if (!drawing) return;
+
+    if (!drawing.path) {
+      const link = document.createElement("a");
+      link.href = painting.canvasData;
+      link.download = `${painting.title}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
 
     const imgOutline = new Image();
     const imgPaint = new Image();
@@ -173,6 +183,7 @@ export default function GalleryPage() {
             {filteredPaintings.map((painting) => {
               const drawing = drawingsData.find((d) => d.id === painting.drawingId);
               if (!drawing) return null;
+              const isBlankPaper = drawing.collectionId === "freeplay" || !drawing.path;
 
               return (
                 <div
@@ -186,11 +197,16 @@ export default function GalleryPage() {
                       alt={painting.title}
                       className="w-full h-full object-contain absolute z-10 p-3"
                     />
-                    <img
-                      src={drawing.path}
-                      alt={drawing.name}
-                      className="w-full h-full object-contain opacity-20 absolute p-3"
-                    />
+                    {isBlankPaper && !painting.canvasData && (
+                      <FilePlus className="w-10 h-10 text-purple/70" />
+                    )}
+                    {!isBlankPaper && (
+                      <img
+                        src={drawing.path}
+                        alt={drawing.name}
+                        className="w-full h-full object-contain opacity-20 absolute p-3"
+                      />
+                    )}
 
                     {/* Progress overlay */}
                     {painting.progress > 0 && !painting.isCompleted && (
@@ -338,11 +354,13 @@ export default function GalleryPage() {
                 alt={previewPainting.title}
                 className="w-full h-full object-contain absolute z-10 p-6"
               />
-              <img
-                src={drawingsData.find(d => d.id === previewPainting.drawingId)?.path}
-                alt="Base outline"
-                className="w-full h-full object-contain opacity-20 absolute p-6"
-              />
+              {drawingsData.find(d => d.id === previewPainting.drawingId)?.path && (
+                <img
+                  src={drawingsData.find(d => d.id === previewPainting.drawingId)?.path}
+                  alt="Base outline"
+                  className="w-full h-full object-contain opacity-20 absolute p-6"
+                />
+              )}
             </div>
             <div className="p-6 bg-bg-dark/50 border-t border-gray-800 flex justify-end gap-3">
               <button

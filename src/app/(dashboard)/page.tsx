@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Play, Sparkles, Trophy, Star, ArrowRight, Heart, Palette } from "lucide-react";
+import { Play, Sparkles, Trophy, Star, ArrowRight, Heart, Palette, FilePlus } from "lucide-react";
 import { appConfig } from "@/constants/appConfig";
 import { db } from "@/lib/db";
 import { drawingsData, drawingsData as allDrawings } from "@/constants/drawingsData";
@@ -74,6 +74,13 @@ export default function HomePage() {
             >
               <Play className="w-5 h-5 fill-current" />
               Começar a colorir
+            </Link>
+            <Link
+              href="/editor/new_blank_paper"
+              className="bg-bg-dark/70 hover:bg-bg-dark text-white border border-white/10 font-fredoka text-lg font-bold px-8 py-4 rounded-2xl flex items-center justify-center gap-2 transition-all duration-200 btn-kid hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              <FilePlus className="w-5 h-5" />
+              Papel em branco
             </Link>
           </div>
         </div>
@@ -155,11 +162,13 @@ export default function HomePage() {
                   className="w-full h-full object-contain absolute z-10"
                 />
                 {/* Base drawing below */}
-                <img
-                  src={inProgress.drawing.path}
-                  alt={inProgress.drawing.name}
-                  className="w-full h-full object-contain opacity-40 absolute"
-                />
+                {inProgress.drawing.path && (
+                  <img
+                    src={inProgress.drawing.path}
+                    alt={inProgress.drawing.name}
+                    className="w-full h-full object-contain opacity-40 absolute"
+                  />
+                )}
               </div>
 
               <div className="space-y-4 flex-1 text-center sm:text-left">
@@ -220,6 +229,7 @@ export default function HomePage() {
           <div className="space-y-4">
             {recommendedDrawings.map((drawing) => {
               const isFav = favoriteDrawingIds.includes(drawing.id);
+              const isBlankPaper = drawing.collectionId === "freeplay" || !drawing.path;
               return (
                 <div
                   key={drawing.id}
@@ -227,11 +237,15 @@ export default function HomePage() {
                 >
                   {/* Thumbnail */}
                   <div className="w-16 h-16 bg-white rounded-xl border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden relative">
-                    <img
-                      src={drawing.path}
-                      alt={drawing.name}
-                      className="w-full h-full object-contain p-1"
-                    />
+                    {isBlankPaper ? (
+                      <FilePlus className="w-7 h-7 text-purple" />
+                    ) : (
+                      <img
+                        src={drawing.path}
+                        alt={drawing.name}
+                        className="w-full h-full object-contain p-1"
+                      />
+                    )}
                   </div>
 
                   {/* Metadata */}

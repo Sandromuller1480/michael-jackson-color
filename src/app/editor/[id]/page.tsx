@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Play, ArrowLeft, RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize, Minimize, PaintBucket, Brush, PenTool, Highlighter, Eraser, Pipette, Palette, Heart, CheckCircle2, RefreshCw, Sparkles, X, Star, Trophy, Download } from "lucide-react";
+import { Play, ArrowLeft, RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize, Minimize, PaintBucket, Brush, PenTool, Highlighter, Eraser, Pipette, Palette, Heart, CheckCircle2, RefreshCw, Sparkles, X, Star, Trophy, Download, SprayCan } from "lucide-react";
 import { db, Painting } from "@/lib/db";
 import { drawingsData, colorPalettes, drawingsData as allDrawings } from "@/constants/drawingsData";
 import { playSelectSound, playCompleteSound } from "@/lib/sounds";
 import { triggerDrawingCompleted, triggerFavoriteAdded, triggerDayActive } from "@/lib/achievements";
 import { useLiveQuery } from "dexie-react-hooks";
 
-type Tool = "brush" | "pencil" | "marker" | "bucket" | "eraser" | "picker";
+type Tool = "brush" | "pencil" | "marker" | "airbrush" | "bucket" | "eraser" | "picker";
 
 export default function EditorPage() {
   const params = useParams();
@@ -86,6 +86,13 @@ export default function EditorPage() {
   const soundOn = preferences?.sound ?? true;
   const isContrast = preferences?.contrast ?? false;
   const isLargeButtons = preferences?.largeButtons ?? false;
+  const isBlankPaper = drawing?.collectionId === "freeplay" || !drawing?.path;
+
+  useEffect(() => {
+    if (isBlankPaper && activeTool === "bucket") {
+      setActiveTool("brush");
+    }
+  }, [isBlankPaper, activeTool]);
 
   // 1. CARREGAR OU INICIALIZAR PINTURA
   useEffect(() => {
@@ -182,13 +189,7 @@ export default function EditorPage() {
     const outlineCtx = hiddenOutline.getContext("2d");
     if (!ctx || !outlineCtx) return;
 
-    const outlineImg = new Image();
-    outlineImg.src = drawing.path;
-    outlineImg.onload = () => {
-      // Ajustar o tamanho dos canvas para as dimensões originais da imagem
-      const w = outlineImg.naturalWidth || 800;
-      const h = outlineImg.naturalHeight || 800;
-
+    const restoreOrStartBlank = (w: number, h: number) => {
       paintCanvas.width = w;
       paintCanvas.height = h;
       hiddenOutline.width = w;
@@ -196,28 +197,40 @@ export default function EditorPage() {
       setCanvasAspectRatio(`${w} / ${h}`);
       setIsCanvasLandscape(w >= h);
 
-      // Desenhar o contorno no canvas auxiliar oculto
-      outlineCtx.drawImage(outlineImg, 0, 0, w, h);
-
-      // Preencher o fundo do canvas de pintura de branco se for novo
+      outlineCtx.clearRect(0, 0, w, h);
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, w, h);
 
-      // Restaurar progresso se existir
       if (painting.canvasData) {
         const paintImg = new Image();
         paintImg.src = painting.canvasData;
         paintImg.onload = () => {
           ctx.drawImage(paintImg, 0, 0, w, h);
-          // Iniciar pilha de Undo com o estado inicial restaurado
           setUndoStack([painting.canvasData]);
         };
       } else {
-        // Estado inicial em branco
         setUndoStack([paintCanvas.toDataURL()]);
       }
     };
-  }, [painting, drawing, loading]);
+
+    if (isBlankPaper) {
+      restoreOrStartBlank(1000, 1300);
+      return;
+    }
+
+    const outlineImg = new Image();
+    outlineImg.src = drawing.path;
+    outlineImg.onload = () => {
+      // Ajustar o tamanho dos canvas para as dimensões originais da imagem
+      const w = outlineImg.naturalWidth || 800;
+      const h = outlineImg.naturalHeight || 800;
+
+      restoreOrStartBlank(w, h);
+
+      // Desenhar o contorno no canvas auxiliar oculto
+      outlineCtx.drawImage(outlineImg, 0, 0, w, h);
+    };
+  }, [painting, drawing, loading, isBlankPaper]);
 
   // 3. ATALHOS DE TECLADO
   useEffect(() => {
@@ -237,6 +250,8 @@ export default function EditorPage() {
         setTool("bucket");
       } else if (e.key === "i" || e.key === "I") {
         setTool("picker");
+      } else if (e.key === "a" || e.key === "A") {
+        setTool("airbrush");
       } else if (e.key === "+") {
         adjustZoom(0.2);
       } else if (e.key === "-") {
@@ -539,6 +554,33 @@ export default function EditorPage() {
     };
   };
 
+  const hexToRgb = (hexColor: string) => ({
+    r: parseInt(hexColor.slice(1, 3), 16),
+    g: parseInt(hexColor.slice(3, 5), 16),
+    b: parseInt(hexColor.slice(5, 7), 16),
+  });
+
+  const sprayAt = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+    const { r, g, b } = hexToRgb(activeColor);
+    const radius = Math.max(4, brushSize);
+    const droplets = Math.max(10, Math.round(radius * 1.8));
+
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.min(0.28, brushOpacity * 0.22)})`;
+
+    for (let i = 0; i < droplets; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.sqrt(Math.random()) * radius;
+      const dotSize = Math.max(1, radius / 18) * (0.6 + Math.random() * 0.9);
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(angle) * distance, y + Math.sin(angle) * distance, dotSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  };
+
   // 7. PINTURA - COMEÇAR (DOWN)
   const handleDrawStart = (clientX: number, clientY: number) => {
     if (activeTool === "picker") {
@@ -559,6 +601,13 @@ export default function EditorPage() {
       const dataUrl = paintCanvas.toDataURL();
       saveStateToUndo(dataUrl);
       autoSave(dataUrl);
+      return;
+    }
+
+    if (activeTool === "airbrush") {
+      setIsDrawing(true);
+      setLastPos(coords);
+      sprayAt(ctx, coords.x, coords.y);
       return;
     }
 
@@ -603,10 +652,19 @@ export default function EditorPage() {
     const ctx = paintCanvas?.getContext("2d");
     if (!paintCanvas || !ctx) return;
 
-    ctx.beginPath();
-    ctx.moveTo(lastPos.x, lastPos.y);
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
+    if (activeTool === "airbrush") {
+      const distance = Math.hypot(coords.x - lastPos.x, coords.y - lastPos.y);
+      const steps = Math.max(1, Math.ceil(distance / Math.max(4, brushSize / 2)));
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        sprayAt(ctx, lastPos.x + (coords.x - lastPos.x) * t, lastPos.y + (coords.y - lastPos.y) * t);
+      }
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(lastPos.x, lastPos.y);
+      ctx.lineTo(coords.x, coords.y);
+      ctx.stroke();
+    }
 
     setLastPos(coords);
   };
@@ -933,6 +991,17 @@ export default function EditorPage() {
 
   const handleDownloadFromModal = () => {
     if (!painting) return;
+
+    if (isBlankPaper) {
+      const currentPaintCanvas = paintCanvasRef.current;
+      if (!currentPaintCanvas) return;
+
+      const link = document.createElement("a");
+      link.href = currentPaintCanvas.toDataURL("image/png");
+      link.download = `${painting.title}.png`;
+      link.click();
+      return;
+    }
     
     const outlineImg = new Image();
     outlineImg.src = drawing.path;
@@ -1196,6 +1265,18 @@ export default function EditorPage() {
                 <Highlighter className="w-5 h-5" />
               </button>
 
+              {/* Aerografo */}
+              <button
+                onClick={() => setTool("airbrush")}
+                title="Aerografo"
+                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                  activeTool === "airbrush" ? "bg-purple text-white shadow-lg shadow-purple/25" : "bg-bg-dark hover:bg-gray-800 text-gray-400"
+                }`}
+                style={{ minWidth: "48px", minHeight: "48px" }}
+              >
+                <SprayCan className="w-5 h-5" />
+              </button>
+
               {/* Borracha */}
               <button
                 onClick={() => setTool("eraser")}
@@ -1298,12 +1379,14 @@ export default function EditorPage() {
             />
 
             {/* 2. Drawing Outline Image (Top Layer) */}
-            <img
-              src={drawing.path}
-              alt={drawing.name}
-              className="w-full h-full object-contain absolute inset-0 pointer-events-none mix-blend-multiply select-none"
-              style={{ userSelect: "none" }}
-            />
+            {!isBlankPaper && (
+              <img
+                src={drawing.path}
+                alt={drawing.name}
+                className="w-full h-full object-contain absolute inset-0 pointer-events-none mix-blend-multiply select-none"
+                style={{ userSelect: "none" }}
+              />
+            )}
 
             {/* Hidden Outline Canvas for pixel reading */}
             <canvas ref={hiddenOutlineCanvasRef} className="hidden" />
@@ -1506,6 +1589,17 @@ export default function EditorPage() {
               <span className="text-[9px] font-fredoka mt-0.5">Apagar</span>
             </button>
 
+            {/* Aerografo */}
+            <button
+              onClick={() => setTool("airbrush")}
+              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all cursor-pointer ${
+                activeTool === "airbrush" ? "text-purple scale-110 font-bold" : "text-gray-400"
+              }`}
+            >
+              <SprayCan className="w-6 h-6" />
+              <span className="text-[9px] font-fredoka mt-0.5">Aerog.</span>
+            </button>
+
             {/* Conta Gotas */}
             <button
               onClick={() => setTool("picker")}
@@ -1586,11 +1680,13 @@ export default function EditorPage() {
                 alt="Pintura final"
                 className="w-full h-full object-contain absolute z-10"
               />
-              <img
-                src={drawing.path}
-                alt="Outline base"
-                className="w-full h-full object-contain opacity-25 absolute"
-              />
+              {!isBlankPaper && (
+                <img
+                  src={drawing.path}
+                  alt="Outline base"
+                  className="w-full h-full object-contain opacity-25 absolute"
+                />
+              )}
             </div>
 
             {/* Actions */}

@@ -35,6 +35,12 @@ export interface Achievement {
 
 export const collectionsData: Collection[] = [
   {
+    id: "freeplay",
+    name: "Papel em Branco",
+    description: "Uma folha limpa para desenhar livremente.",
+    coverImage: "",
+  },
+  {
     id: "silhouettes",
     name: "Silhuetas e Poses",
     description: "Primeira seleção de desenhos novos para colorir.",
@@ -103,6 +109,20 @@ export const drawingsData: Drawing[] = newDrawingFiles.map((drawing, index) => (
   freePlayAvailable: true,
   floodFillAvailable: true,
 }));
+
+drawingsData.unshift({
+  id: "blank_paper",
+  name: "Papel em Branco",
+  description: "Uma folha limpa para criar qualquer desenho do zero.",
+  path: "",
+  collectionId: "freeplay",
+  difficulty: difficultyByOrder[0],
+  estimatedTime: "Livre",
+  order: 0,
+  status: "active",
+  freePlayAvailable: true,
+  floodFillAvailable: false,
+});
 
 export const colorPalettes: Palette[] = [
   {

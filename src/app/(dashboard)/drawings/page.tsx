@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Play, Heart, Search, Filter, Palette, Award } from "lucide-react";
+import { Play, Heart, Search, Filter, Palette, Award, FilePlus } from "lucide-react";
 import { drawingsData, collectionsData } from "@/constants/drawingsData";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -190,6 +190,7 @@ export default function DrawingsCatalogPage() {
               const isFavorite = localData?.isFavorite === 1;
               const isCompleted = localData?.isCompleted === 1;
               const progress = localData?.progress ?? 0;
+              const isBlankPaper = drawing.collectionId === "freeplay" || !drawing.path;
 
               const editorUrl = localData?.id ? `/editor/${localData.id}` : `/editor/new_${drawing.id}`;
 
@@ -200,11 +201,19 @@ export default function DrawingsCatalogPage() {
                 >
                   {/* Drawing Image Box */}
                   <div className="aspect-[4/3] bg-white m-3 rounded-2xl border border-gray-200 flex items-center justify-center relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-200">
-                    <img
-                      src={drawing.path}
-                      alt={drawing.name}
-                      className="w-full h-full object-contain p-4"
-                    />
+                    {isBlankPaper ? (
+                      <div className="w-full h-full bg-white flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center text-purple">
+                          <FilePlus className="w-9 h-9" />
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={drawing.path}
+                        alt={drawing.name}
+                        className="w-full h-full object-contain p-4"
+                      />
+                    )}
 
                     {/* Progress overlay */}
                     {progress > 0 && !isCompleted && (
