@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Play, ArrowLeft, RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize, Minimize, PaintBucket, Brush, PenTool, Highlighter, Eraser, Pipette, Palette, Heart, CheckCircle2, RefreshCw, Sparkles, X, Star, Trophy, Download, SprayCan, RectangleHorizontal, RectangleVertical } from "lucide-react";
+import { Play, ArrowLeft, RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize, Minimize, PaintBucket, Brush, PenTool, Highlighter, Eraser, Pipette, Palette, Heart, CheckCircle2, RefreshCw, Sparkles, X, Star, Trophy, Download, SprayCan, RectangleHorizontal, RectangleVertical, Grid3X3 } from "lucide-react";
 import { db, Painting } from "@/lib/db";
 import { drawingsData, drawingsData as allDrawings } from "@/constants/drawingsData";
 import { colorByHex, professionalColorFamilies, professionalColorPalette } from "@/constants/colorPalette";
@@ -41,6 +41,7 @@ export default function EditorPage() {
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const [favoriteColors, setFavoriteColors] = useState<string[]>([]);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState(false);
 
   // Zoom e Pan
   const [zoom, setZoom] = useState(1.0);
@@ -1281,7 +1282,9 @@ export default function EditorPage() {
   return (
     <div
       ref={containerRef}
-      className={`min-h-screen bg-bg-dark text-white flex flex-col select-none relative pb-[72vh] lg:pb-0 ${
+      className={`min-h-screen bg-bg-dark text-white flex flex-col select-none relative ${
+        isMobilePaletteOpen ? "pb-[72vh]" : "pb-32"
+      } lg:pb-0 ${
         isContrast ? "border-4 border-purple" : ""
       }`}
     >
@@ -1673,7 +1676,7 @@ export default function EditorPage() {
 
       {/* 3. MOBILE BAR CONTROLS (Oculto no Modo Zen) */}
       {!isZenMode && (
-        <footer className="lg:hidden fixed bottom-0 left-0 right-0 bg-bg-card border-t border-gray-800 px-4 py-3 z-50 select-none flex flex-col gap-3 max-h-[72vh] overflow-y-auto">
+        <footer className="lg:hidden fixed bottom-0 left-0 right-0 bg-bg-card border-t border-gray-800 px-4 py-3 z-50 select-none flex flex-col gap-3 max-h-[78vh]">
           <div className="flex items-center gap-3">
             <div
               className="w-11 h-11 rounded-xl border border-white/20 shrink-0"
@@ -1683,6 +1686,19 @@ export default function EditorPage() {
               <p className="text-xs font-fredoka font-bold text-white truncate">{activeColorName}</p>
               <p className="text-[10px] font-mono text-gray-500 uppercase">{activeColor}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsMobilePaletteOpen((prev) => !prev)}
+              title={isMobilePaletteOpen ? "Recolher paleta de cores" : "Abrir paleta de cores"}
+              aria-label={isMobilePaletteOpen ? "Recolher paleta de cores" : "Abrir paleta de cores"}
+              aria-expanded={isMobilePaletteOpen}
+              className={`w-10 h-10 rounded-xl border border-gray-850 flex items-center justify-center active:scale-95 cursor-pointer shrink-0 transition-colors ${
+                isMobilePaletteOpen ? "bg-purple text-white" : "bg-bg-dark text-gray-300"
+              }`}
+              style={{ minWidth: "40px", minHeight: "40px" }}
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
             <button
               onClick={toggleFavoriteColor}
               title="Favoritar Cor"
@@ -1695,27 +1711,32 @@ export default function EditorPage() {
             </button>
           </div>
 
-          {recentColors.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-[10px] font-fredoka font-semibold text-gray-400">Cores recentes</span>
-              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
-                {recentColors.map((color) => renderSavedColorButton(color, "w-10 h-10"))}
+          {isMobilePaletteOpen && (
+            <div className="space-y-3 max-h-[48vh] overflow-y-auto overscroll-contain pr-1">
+              {recentColors.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-fredoka font-semibold text-gray-400">Cores recentes</span>
+                  <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+                    {recentColors.map((color) => renderSavedColorButton(color, "w-10 h-10"))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {professionalColorFamilies.map((palette) => (
+                  <div key={palette.family} className="space-y-1.5">
+                    <span className="text-[10px] font-fredoka font-semibold text-gray-400">{palette.family}</span>
+                    <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+                      {palette.colors.map((color) => renderPaletteColorButton(color, "w-11 h-11"))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          <div className="space-y-3">
-            {professionalColorFamilies.map((palette) => (
-              <div key={palette.family} className="space-y-1.5">
-                <span className="text-[10px] font-fredoka font-semibold text-gray-400">{palette.family}</span>
-                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
-                  {palette.colors.map((color) => renderPaletteColorButton(color, "w-11 h-11"))}
-                </div>
-              </div>
-            ))}
-          </div>
           {/* Ferramentas Mobile */}
-          <div className="flex items-center justify-around">
+          <div className="flex items-center justify-around shrink-0 border-t border-gray-850 pt-2">
             {/* Balde */}
             <button
               onClick={() => setTool("bucket")}
