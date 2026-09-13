@@ -1307,7 +1307,7 @@ export default function EditorPage() {
               <input
                 type="range"
                 min="2"
-                max="50"
+                max="100"
                 value={brushSize}
                 onChange={(e) => setBrushSize(parseInt(e.target.value))}
                 className="w-16 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer -rotate-90 origin-center my-8 accent-purple"
@@ -1624,7 +1624,7 @@ export default function EditorPage() {
                 {brushSize}
               </span>
               <button
-                onClick={() => setBrushSize((prev) => Math.min(50, prev + 4))}
+                onClick={() => setBrushSize((prev) => Math.min(100, prev + 4))}
                 className="w-8 h-8 bg-bg-dark border border-gray-800 rounded-xl text-xs font-bold font-fredoka flex items-center justify-center active:scale-95 cursor-pointer"
               >
                 +
