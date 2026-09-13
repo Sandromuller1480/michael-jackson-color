@@ -62,9 +62,11 @@ export default function EditorPage() {
   const [paperOrientation, setPaperOrientation] = useState<PaperOrientation>("portrait");
 
   // Desenho ativo
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
+  const isDrawingRef = useRef(false);
+  const lastPosRef = useRef({ x: 0, y: 0 });
   const autoSaveSequenceRef = useRef(0);
+  const activePenPointerIdRef = useRef<number | null>(null);
+  const ignoreMouseUntilRef = useRef(0);
   const multiTouchActiveRef = useRef(false);
   const pendingSingleTouchRef = useRef<{
     startX: number;
@@ -555,8 +557,8 @@ export default function EditorPage() {
       return null;
     }
 
-    const x = Math.floor((localX / visibleWidth) * paintCanvas.width);
-    const y = Math.floor((localY / visibleHeight) * paintCanvas.height);
+    const x = (localX / visibleWidth) * paintCanvas.width;
+    const y = (localY / visibleHeight) * paintCanvas.height;
     
     return {
       x: Math.max(0, Math.min(paintCanvas.width - 1, x)),
@@ -606,7 +608,15 @@ export default function EditorPage() {
     if (!paintCanvas || !ctx || !hiddenOutline) return;
 
     if (activeTool === "bucket") {
-      runFloodFill(ctx, hiddenOutline.getContext("2d")!, coords.x, coords.y, activeColor, paintCanvas.width, paintCanvas.height);
+      runFloodFill(
+        ctx,
+        hiddenOutline.getContext("2d")!,
+        Math.floor(coords.x),
+        Math.floor(coords.y),
+        activeColor,
+        paintCanvas.width,
+        paintCanvas.height
+      );
       const dataUrl = paintCanvas.toDataURL();
       saveStateToUndo(dataUrl);
       autoSave(dataUrl);
@@ -614,14 +624,14 @@ export default function EditorPage() {
     }
 
     if (activeTool === "airbrush") {
-      setIsDrawing(true);
-      setLastPos(coords);
+      isDrawingRef.current = true;
+      lastPosRef.current = coords;
       sprayAt(ctx, coords.x, coords.y);
       return;
     }
 
-    setIsDrawing(true);
-    setLastPos(coords);
+    isDrawingRef.current = true;
+    lastPosRef.current = coords;
 
     // Configurar pincel
     ctx.strokeStyle = activeColor;
@@ -652,7 +662,7 @@ export default function EditorPage() {
 
   // PINTURA - DESENHAR (MOVE)
   const handleDrawMove = (clientX: number, clientY: number) => {
-    if (!isDrawing) return;
+    if (!isDrawingRef.current) return;
 
     const coords = getCanvasCoords(clientX, clientY);
     if (!coords) return;
@@ -661,27 +671,29 @@ export default function EditorPage() {
     const ctx = paintCanvas?.getContext("2d");
     if (!paintCanvas || !ctx) return;
 
+    const previousPos = lastPosRef.current;
+
     if (activeTool === "airbrush") {
-      const distance = Math.hypot(coords.x - lastPos.x, coords.y - lastPos.y);
+      const distance = Math.hypot(coords.x - previousPos.x, coords.y - previousPos.y);
       const steps = Math.max(1, Math.ceil(distance / Math.max(3, brushSize / 5)));
       for (let i = 1; i <= steps; i++) {
         const t = i / steps;
-        sprayAt(ctx, lastPos.x + (coords.x - lastPos.x) * t, lastPos.y + (coords.y - lastPos.y) * t);
+        sprayAt(ctx, previousPos.x + (coords.x - previousPos.x) * t, previousPos.y + (coords.y - previousPos.y) * t);
       }
     } else {
       ctx.beginPath();
-      ctx.moveTo(lastPos.x, lastPos.y);
+      ctx.moveTo(previousPos.x, previousPos.y);
       ctx.lineTo(coords.x, coords.y);
       ctx.stroke();
     }
 
-    setLastPos(coords);
+    lastPosRef.current = coords;
   };
 
   // PINTURA - TERMINAR (UP)
   const handleDrawEnd = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
 
     const paintCanvas = paintCanvasRef.current;
     const ctx = paintCanvas?.getContext("2d");
@@ -706,7 +718,7 @@ export default function EditorPage() {
     const ctx = paintCanvas?.getContext("2d");
     if (!paintCanvas || !ctx) return;
 
-    const pixel = ctx.getImageData(coords.x, coords.y, 1, 1).data;
+    const pixel = ctx.getImageData(Math.floor(coords.x), Math.floor(coords.y), 1, 1).data;
     // Se for branco ou transparente, não altera nada relevante
     if (pixel[3] < 10) return;
 
@@ -792,8 +804,71 @@ export default function EditorPage() {
     if (soundOn) playSelectSound();
   };
 
+  const getPenSamples = (event: React.PointerEvent<HTMLDivElement>) => {
+    const nativeEvent = event.nativeEvent;
+    return typeof nativeEvent.getCoalescedEvents === "function"
+      ? nativeEvent.getCoalescedEvents()
+      : [nativeEvent];
+  };
+
+  const handlePenPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "pen" || e.button !== 0) return;
+
+    e.preventDefault();
+    ignoreMouseUntilRef.current = Date.now() + 800;
+    activePenPointerIdRef.current = e.pointerId;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    multiTouchActiveRef.current = false;
+    pendingSingleTouchRef.current = null;
+
+    if (e.shiftKey) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      return;
+    }
+
+    handleDrawStart(e.clientX, e.clientY);
+  };
+
+  const handlePenPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "pen" || activePenPointerIdRef.current !== e.pointerId) return;
+
+    e.preventDefault();
+    ignoreMouseUntilRef.current = Date.now() + 800;
+
+    if (isPanning) {
+      setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+      return;
+    }
+
+    if (activeTool === "bucket" || activeTool === "picker") return;
+
+    for (const sample of getPenSamples(e)) {
+      handleDrawMove(sample.clientX, sample.clientY);
+    }
+  };
+
+  const handlePenPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "pen" || activePenPointerIdRef.current !== e.pointerId) return;
+
+    e.preventDefault();
+    ignoreMouseUntilRef.current = Date.now() + 800;
+    activePenPointerIdRef.current = null;
+
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+
+    if (isPanning) {
+      setIsPanning(false);
+    } else {
+      handleDrawEnd();
+    }
+  };
+
   // Mouse pan
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (Date.now() < ignoreMouseUntilRef.current) return;
     if (e.button !== 0) return; // Apenas clique esquerdo
     if (activeTool === "picker") {
       runEyedropper(e.clientX, e.clientY);
@@ -810,6 +885,7 @@ export default function EditorPage() {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (Date.now() < ignoreMouseUntilRef.current) return;
     if (isPanning) {
       setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
     } else {
@@ -818,6 +894,7 @@ export default function EditorPage() {
   };
 
   const handleMouseUp = () => {
+    if (Date.now() < ignoreMouseUntilRef.current) return;
     if (isPanning) {
       setIsPanning(false);
     } else {
@@ -829,7 +906,7 @@ export default function EditorPage() {
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       // Começar Pinch-to-zoom
-      setIsDrawing(false);
+      isDrawingRef.current = false;
       setIsPanning(true);
       
       const t1 = e.touches[0];
@@ -866,7 +943,7 @@ export default function EditorPage() {
       const midX = (t1.clientX + t2.clientX) / 2;
       const midY = (t1.clientY + t2.clientY) / 2;
       setPan({ x: midX - panStart.x, y: midY - panStart.y });
-    } else if (e.touches.length === 1 && isDrawing) {
+    } else if (e.touches.length === 1 && isDrawingRef.current) {
       handleDrawMove(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
@@ -886,7 +963,7 @@ export default function EditorPage() {
     if (e.touches.length >= 2) {
       multiTouchActiveRef.current = true;
       pendingSingleTouchRef.current = null;
-      setIsDrawing(false);
+      isDrawingRef.current = false;
       setIsPanning(true);
 
       const t1 = e.touches[0];
@@ -918,7 +995,7 @@ export default function EditorPage() {
     if (e.touches.length >= 2) {
       multiTouchActiveRef.current = true;
       pendingSingleTouchRef.current = null;
-      setIsDrawing(false);
+      isDrawingRef.current = false;
       setIsPanning(true);
 
       const t1 = e.touches[0];
@@ -952,7 +1029,7 @@ export default function EditorPage() {
 
       if (activeTool === "bucket" || activeTool === "picker") return;
 
-      if (!isDrawing) {
+      if (!isDrawingRef.current) {
         handleDrawStart(pendingTouch.startX, pendingTouch.startY);
       }
       handleDrawMove(touch.clientX, touch.clientY);
@@ -964,7 +1041,7 @@ export default function EditorPage() {
 
     if (e.touches.length > 0) {
       if (multiTouchActiveRef.current) {
-        setIsDrawing(false);
+        isDrawingRef.current = false;
       }
       return;
     }
@@ -972,7 +1049,7 @@ export default function EditorPage() {
     if (multiTouchActiveRef.current || isPanning) {
       multiTouchActiveRef.current = false;
       pendingSingleTouchRef.current = null;
-      setIsDrawing(false);
+      isDrawingRef.current = false;
       setIsPanning(false);
       setPinchStartDist(null);
       return;
@@ -1441,6 +1518,10 @@ export default function EditorPage() {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onPointerDown={handlePenPointerDown}
+            onPointerMove={handlePenPointerMove}
+            onPointerUp={handlePenPointerEnd}
+            onPointerCancel={handlePenPointerEnd}
             onTouchStart={handleMobileTouchStart}
             onTouchMove={handleMobileTouchMove}
             onTouchEnd={handleMobileTouchEnd}
