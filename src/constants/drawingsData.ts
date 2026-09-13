@@ -124,7 +124,7 @@ drawingsData.unshift({
   floodFillAvailable: true,
 });
 
-export const colorPalettes: Palette[] = [
+const baseColorPalettes: Palette[] = [
   {
     name: "Cores Vibrantes",
     colors: ["#FF3B30", "#FF9500", "#FFCC00", "#4CD964", "#5AC8FA", "#007AFF", "#5856D6", "#FF2D55"],
@@ -158,6 +158,76 @@ export const colorPalettes: Palette[] = [
     colors: ["#FFD700", "#C0C0C0", "#E5E4E2", "#A3C1AD", "#6E260E", "#0047AB", "#A45A52", "#131313"],
   },
 ];
+
+const extraPaletteNames = [
+  "Rosas e Vermelhos",
+  "Laranjas Quentes",
+  "Amarelos Luminosos",
+  "Verdes Claros",
+  "Verdes Profundos",
+  "Azuis de Ceu",
+  "Azuis Intensos",
+  "Roxos Vivos",
+  "Violetas Suaves",
+  "Magenta e Pink",
+  "Neons",
+  "Terrosos",
+  "Madeira e Couro",
+  "Cinzas Coloridos",
+  "Noite e Sombra",
+  "Doces",
+  "Pastel Extra",
+] as const;
+
+const hslToHex = (h: number, s: number, l: number) => {
+  const saturation = s / 100;
+  const lightness = l / 100;
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const x = chroma * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = lightness - chroma / 2;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+
+  if (h < 60) {
+    r = chroma;
+    g = x;
+  } else if (h < 120) {
+    r = x;
+    g = chroma;
+  } else if (h < 180) {
+    g = chroma;
+    b = x;
+  } else if (h < 240) {
+    g = x;
+    b = chroma;
+  } else if (h < 300) {
+    r = x;
+    b = chroma;
+  } else {
+    r = chroma;
+    b = x;
+  }
+
+  return [r, g, b]
+    .map((value) => Math.round((value + m) * 255).toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase()
+    .padStart(6, "0")
+    .replace(/^/, "#");
+};
+
+const generatedColorPalettes: Palette[] = extraPaletteNames.map((name, paletteIndex) => ({
+  name,
+  colors: Array.from({ length: 8 }, (_, colorIndex) => {
+    const hue = (paletteIndex * 21 + colorIndex * 7) % 360;
+    const saturation = 62 + ((paletteIndex + colorIndex) % 4) * 8;
+    const lightness = 34 + ((paletteIndex * 3 + colorIndex * 5) % 9) * 5;
+    return hslToHex(hue, Math.min(saturation, 92), Math.min(lightness, 82));
+  }),
+}));
+
+export const colorPalettes: Palette[] = [...baseColorPalettes, ...generatedColorPalettes];
 
 export const achievementsData: Achievement[] = [
   {

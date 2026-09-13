@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Play, ArrowLeft, RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize, Minimize, PaintBucket, Brush, PenTool, Highlighter, Eraser, Pipette, Palette, Heart, CheckCircle2, RefreshCw, Sparkles, X, Star, Trophy, Download, SprayCan } from "lucide-react";
+import { Play, ArrowLeft, RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize, Minimize, PaintBucket, Brush, PenTool, Highlighter, Eraser, Pipette, Palette, Heart, CheckCircle2, RefreshCw, Sparkles, X, Star, Trophy, Download, SprayCan, RectangleHorizontal, RectangleVertical } from "lucide-react";
 import { db, Painting } from "@/lib/db";
 import { drawingsData, colorPalettes, drawingsData as allDrawings } from "@/constants/drawingsData";
 import { playSelectSound, playCompleteSound } from "@/lib/sounds";
@@ -10,6 +10,11 @@ import { triggerDrawingCompleted, triggerFavoriteAdded, triggerDayActive } from 
 import { useLiveQuery } from "dexie-react-hooks";
 
 type Tool = "brush" | "pencil" | "marker" | "airbrush" | "bucket" | "eraser" | "picker";
+type PaperOrientation = "portrait" | "landscape";
+
+const getBlankPaperSize = (orientation: PaperOrientation) => (
+  orientation === "landscape" ? { width: 1300, height: 1000 } : { width: 1000, height: 1300 }
+);
 
 export default function EditorPage() {
   const params = useParams();
@@ -54,6 +59,7 @@ export default function EditorPage() {
   const [confettis, setConfettis] = useState<{ id: number; left: number; delay: number; color: string; duration: number }[]>([]);
   const [canvasAspectRatio, setCanvasAspectRatio] = useState("1 / 1");
   const [isCanvasLandscape, setIsCanvasLandscape] = useState(false);
+  const [paperOrientation, setPaperOrientation] = useState<PaperOrientation>("portrait");
 
   // Desenho ativo
   const [isDrawing, setIsDrawing] = useState(false);
@@ -190,6 +196,7 @@ export default function EditorPage() {
       hiddenOutline.height = h;
       setCanvasAspectRatio(`${w} / ${h}`);
       setIsCanvasLandscape(w >= h);
+      setPaperOrientation(w >= h ? "landscape" : "portrait");
 
       outlineCtx.clearRect(0, 0, w, h);
       ctx.fillStyle = "#ffffff";
@@ -208,7 +215,16 @@ export default function EditorPage() {
     };
 
     if (isBlankPaper) {
-      restoreOrStartBlank(1000, 1300);
+      if (painting.canvasData) {
+        const savedPaintImg = new Image();
+        savedPaintImg.onload = () => {
+          restoreOrStartBlank(savedPaintImg.naturalWidth || 1000, savedPaintImg.naturalHeight || 1300);
+        };
+        savedPaintImg.src = painting.canvasData;
+      } else {
+        const size = getBlankPaperSize("portrait");
+        restoreOrStartBlank(size.width, size.height);
+      }
       return;
     }
 
@@ -734,6 +750,46 @@ export default function EditorPage() {
   const handleZoomReset = () => {
     setZoom(1.0);
     setPan({ x: 0, y: 0 });
+  };
+
+  const handlePaperOrientationChange = (orientation: PaperOrientation) => {
+    if (!isBlankPaper || orientation === paperOrientation) return;
+
+    const paintCanvas = paintCanvasRef.current;
+    const hiddenOutline = hiddenOutlineCanvasRef.current;
+    const ctx = paintCanvas?.getContext("2d");
+    const outlineCtx = hiddenOutline?.getContext("2d");
+    if (!paintCanvas || !hiddenOutline || !ctx || !outlineCtx) return;
+
+    const currentCanvas = document.createElement("canvas");
+    currentCanvas.width = paintCanvas.width;
+    currentCanvas.height = paintCanvas.height;
+    currentCanvas.getContext("2d")?.drawImage(paintCanvas, 0, 0);
+
+    const { width, height } = getBlankPaperSize(orientation);
+    paintCanvas.width = width;
+    paintCanvas.height = height;
+    hiddenOutline.width = width;
+    hiddenOutline.height = height;
+    setCanvasAspectRatio(`${width} / ${height}`);
+    setIsCanvasLandscape(width >= height);
+    setPaperOrientation(orientation);
+    setZoom(1.0);
+    setPan({ x: 0, y: 0 });
+
+    outlineCtx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    const scale = Math.min(width / currentCanvas.width, height / currentCanvas.height);
+    const drawWidth = currentCanvas.width * scale;
+    const drawHeight = currentCanvas.height * scale;
+    ctx.drawImage(currentCanvas, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+
+    const dataUrl = paintCanvas.toDataURL();
+    saveStateToUndo(dataUrl);
+    autoSave(dataUrl);
+    if (soundOn) playSelectSound();
   };
 
   // Mouse pan
@@ -1316,6 +1372,31 @@ export default function EditorPage() {
           className="flex-1 bg-bg-dark relative overflow-hidden flex items-center justify-center cursor-crosshair select-none touch-none"
           style={{ touchAction: "none" }}
         >
+          {isBlankPaper && (
+            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-bg-card/80 backdrop-blur-sm border border-gray-800 p-1.5 rounded-2xl z-20">
+              <button
+                onClick={() => handlePaperOrientationChange("portrait")}
+                title="Papel vertical"
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                  paperOrientation === "portrait" ? "bg-purple text-white" : "bg-bg-dark hover:bg-gray-800 text-gray-400"
+                }`}
+                style={{ minWidth: "36px", minHeight: "36px" }}
+              >
+                <RectangleVertical className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handlePaperOrientationChange("landscape")}
+                title="Papel horizontal"
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                  paperOrientation === "landscape" ? "bg-purple text-white" : "bg-bg-dark hover:bg-gray-800 text-gray-400"
+                }`}
+                style={{ minWidth: "36px", minHeight: "36px" }}
+              >
+                <RectangleHorizontal className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Zoom & Pan floating controls */}
           <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-bg-card/80 backdrop-blur-sm border border-gray-800 p-1.5 rounded-2xl z-20">
             <button
