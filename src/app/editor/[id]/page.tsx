@@ -562,21 +562,20 @@ export default function EditorPage() {
 
   const sprayAt = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
     const { r, g, b } = hexToRgb(activeColor);
-    const radius = Math.max(4, brushSize);
-    const droplets = Math.max(10, Math.round(radius * 1.8));
+    const radius = Math.max(8, brushSize * 1.35);
+    const coreRadius = radius * 0.12;
+    const opacity = Math.min(0.18, Math.max(0.04, brushOpacity * 0.12));
+    const gradient = ctx.createRadialGradient(x, y, coreRadius, x, y, radius);
 
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.min(0.28, brushOpacity * 0.22)})`;
-
-    for (let i = 0; i < droplets; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const distance = Math.sqrt(Math.random()) * radius;
-      const dotSize = Math.max(1, radius / 18) * (0.6 + Math.random() * 0.9);
-      ctx.beginPath();
-      ctx.arc(x + Math.cos(angle) * distance, y + Math.sin(angle) * distance, dotSize, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${opacity})`);
+    gradient.addColorStop(0.45, `rgba(${r}, ${g}, ${b}, ${opacity * 0.55})`);
+    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   };
@@ -654,7 +653,7 @@ export default function EditorPage() {
 
     if (activeTool === "airbrush") {
       const distance = Math.hypot(coords.x - lastPos.x, coords.y - lastPos.y);
-      const steps = Math.max(1, Math.ceil(distance / Math.max(4, brushSize / 2)));
+      const steps = Math.max(1, Math.ceil(distance / Math.max(3, brushSize / 5)));
       for (let i = 1; i <= steps; i++) {
         const t = i / steps;
         sprayAt(ctx, lastPos.x + (coords.x - lastPos.x) * t, lastPos.y + (coords.y - lastPos.y) * t);
