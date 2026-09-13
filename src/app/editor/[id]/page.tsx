@@ -88,12 +88,6 @@ export default function EditorPage() {
   const isLargeButtons = preferences?.largeButtons ?? false;
   const isBlankPaper = drawing?.collectionId === "freeplay" || !drawing?.path;
 
-  useEffect(() => {
-    if (isBlankPaper && activeTool === "bucket") {
-      setActiveTool("brush");
-    }
-  }, [isBlankPaper, activeTool]);
-
   // 1. CARREGAR OU INICIALIZAR PINTURA
   useEffect(() => {
     const loadPainting = async () => {

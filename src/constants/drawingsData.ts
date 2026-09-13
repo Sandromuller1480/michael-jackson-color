@@ -121,7 +121,7 @@ drawingsData.unshift({
   order: 0,
   status: "active",
   freePlayAvailable: true,
-  floodFillAvailable: false,
+  floodFillAvailable: true,
 });
 
 export const colorPalettes: Palette[] = [
